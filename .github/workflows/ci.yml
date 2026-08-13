@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The contract lives in the discovery repo; CI checks out the pinned tag.
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/makeover-discovery
+          ref: contracts-v0.1.0
+          path: ../makeover-discovery
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - run: uv sync --frozen
+      - run: uv run ruff format --check . && uv run ruff check .
+      - run: uv run mypy src
+      # Blender-backed tests are excluded here; a dedicated job installs
+      # Blender 5.2 and runs `-m blender` from Phase 4 onward.
+      - run: uv run pytest -m "not blender"

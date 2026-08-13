@@ -1,0 +1,69 @@
+[project]
+name = "makeover-render"
+version = "0.1.0"
+description = "Blender automation: SceneSpec in, animation and GLTF out."
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+license = { text = "MIT" }
+dependencies = [
+    "makeover-contracts",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "pydantic>=2.9,<3",
+    "pydantic-settings>=2.6",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "pytest-cov>=6.0",
+    "mypy>=1.13",
+    "ruff>=0.8",
+    "httpx>=0.27",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/makeover_render"]
+
+# Local path during development. CI and images pin the published git tag:
+#   makeover-contracts @ git+https://.../makeover-discovery@contracts-v0.1.0#subdirectory=packages/makeover-contracts
+[tool.uv.sources]
+makeover-contracts = { path = "../makeover-discovery/packages/makeover-contracts", editable = true }
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "A", "C4", "SIM", "RUF", "ANN", "PTH"]
+ignore = ["ANN401"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["ANN001", "ANN002", "ANN003", "ANN201", "ANN202"]
+# Scripts here run inside Blender's own interpreter, not this venv.
+"src/makeover_render/infrastructure/blender/scripts/**" = ["ANN", "E402"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true
+plugins = ["pydantic.mypy"]
+# bpy exists only inside Blender; these modules are checked by tests running
+# under Blender, not by mypy here.
+exclude = "src/makeover_render/infrastructure/blender/scripts/"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = ["blender: requires a real Blender executable (slow)"]
+addopts = "--cov=src/makeover_render --cov-report=term-missing --cov-fail-under=80"
+
+[tool.coverage.run]
+branch = true
+omit = ["*/__init__.py", "*/blender/scripts/*"]
