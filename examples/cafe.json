@@ -1,0 +1,17 @@
+{
+  "template_id": "unit-storefront",
+  "seed": 7,
+  "dimensions": { "width_m": 6.0, "height_m": 3.2, "depth_m": 4.0 },
+  "palette": ["#1B4D3E", "#E8DCC4", "#C87941"],
+  "materials": [
+    { "slot": "facade", "family": "render", "base_color": "#E8DCC4", "roughness": 0.7, "metallic": 0.0 },
+    { "slot": "trim", "family": "timber", "base_color": "#1B4D3E", "roughness": 0.5, "metallic": 0.0 },
+    { "slot": "sign", "family": "brass", "base_color": "#C87941", "roughness": 0.3, "metallic": 0.8 },
+    { "slot": "glazing", "family": "glass", "base_color": "#CFE8E0", "roughness": 0.05, "metallic": 0.0 },
+    { "slot": "ground", "family": "terrazzo", "base_color": "#D9D2C4", "roughness": 0.4, "metallic": 0.0 }
+  ],
+  "signage": { "text": "Kedai Kopi Ali", "emissive_strength": 2.0 },
+  "lighting": { "preset": "warm_evening", "key_energy_w": 250.0, "color_temperature_k": 3200 },
+  "camera": { "move": "orbit", "duration_s": 5.0, "fps": 24, "focal_length_mm": 35.0 },
+  "render": { "engine": "BLENDER_EEVEE", "samples": 64, "resolution_x": 1280, "resolution_y": 720 }
+}
