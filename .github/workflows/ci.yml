@@ -5,18 +5,30 @@ on:
     branches: [main]
   pull_request:
 
+defaults:
+  run:
+    # Both repos are checked out side by side under the workspace so that the
+    # relative path dependency in pyproject.toml resolves; every step therefore
+    # runs from this repo's own directory rather than the workspace root.
+    working-directory: makeover-render
+
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          path: makeover-render
 
-      # The contract lives in the discovery repo; CI checks out the pinned tag.
+      # The contract lives in the discovery repo, pinned by tag. actions/checkout
+      # refuses a path outside GITHUB_WORKSPACE, so it becomes a sibling here.
+      # If makeover-discovery is private, the default GITHUB_TOKEN cannot read
+      # it and this needs a PAT in `token:`.
       - uses: actions/checkout@v4
         with:
           repository: ${{ github.repository_owner }}/makeover-discovery
           ref: contracts-v0.1.0
-          path: ../makeover-discovery
+          path: makeover-discovery
 
       - uses: astral-sh/setup-uv@v5
         with:

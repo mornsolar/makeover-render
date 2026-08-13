@@ -31,7 +31,7 @@ build-backend = "hatchling.build"
 packages = ["src/makeover_render"]
 
 # Local path during development. CI and images pin the published git tag:
-#   makeover-contracts @ git+https://.../makeover-discovery@contracts-v0.1.0#subdirectory=packages/makeover-contracts
+#   makeover-contracts @ git+https://github.com/mornsolar/makeover-discovery@contracts-v0.1.0#subdirectory=packages/makeover-contracts
 [tool.uv.sources]
 makeover-contracts = { path = "../makeover-discovery/packages/makeover-contracts", editable = true }
 
