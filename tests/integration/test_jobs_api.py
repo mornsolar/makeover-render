@@ -11,6 +11,19 @@ from makeover_render.interfaces.api.deps import provide_job_queue
 from tests.fakes.job_queue import FakeJobQueue
 from tests.fakes.specs import UNIT_STOREFRONT_MATERIALS, make_spec
 
+FAKE_SHA256 = "a" * 64
+
+
+def _succeeded(result: ArtifactBundle) -> QueuedJobInfo:
+    return QueuedJobInfo(
+        status=QueuedJobStatus.SUCCEEDED,
+        spec=make_spec(),
+        created_at=datetime(2026, 1, 1, tzinfo=UTC),
+        finished_at=datetime(2026, 1, 1, 0, 5, tzinfo=UTC),
+        error=None,
+        result=result,
+    )
+
 
 def build_client(job_queue: FakeJobQueue) -> TestClient:
     app = create_app()
@@ -124,3 +137,117 @@ class TestGetJob:
         body = response.json()
         assert body["status"] == "failed"
         assert body["error"] == "Blender exited 1"
+
+    def test_rewrites_artifact_uris_to_downloadable_routes(self):
+        # A client outside this process cannot open a path on this machine's
+        # own disk - the uri it receives must be something it can fetch.
+        queue = FakeJobQueue()
+        queue.jobs["job-1"] = _succeeded(_bundle())
+
+        body = build_client(queue).get("/jobs/job-1").json()
+
+        assert body["artifacts"]["gltf"]["uri"] == "/jobs/job-1/artifacts/gltf"
+        assert body["artifacts"]["video"]["uri"] == "/jobs/job-1/artifacts/video"
+        assert body["artifacts"]["thumbnail"]["uri"] == "/jobs/job-1/artifacts/thumbnail"
+
+    def test_rewrites_still_uris_by_index(self):
+        stills = (_artifact_ref(ArtifactKind.STILL), _artifact_ref(ArtifactKind.STILL))
+        bundle = ArtifactBundle(
+            gltf=_artifact_ref(ArtifactKind.GLTF),
+            video=_artifact_ref(ArtifactKind.VIDEO),
+            thumbnail=_artifact_ref(ArtifactKind.THUMBNAIL),
+            stills=stills,
+        )
+        queue = FakeJobQueue()
+        queue.jobs["job-1"] = _succeeded(bundle)
+
+        body = build_client(queue).get("/jobs/job-1").json()
+
+        assert body["artifacts"]["stills"][0]["uri"] == "/jobs/job-1/artifacts/stills/0"
+        assert body["artifacts"]["stills"][1]["uri"] == "/jobs/job-1/artifacts/stills/1"
+
+
+class TestGetArtifact:
+    def test_downloads_an_artifacts_bytes(self, tmp_path):
+        video_path = tmp_path / "animation.mp4"
+        video_path.write_bytes(b"fake-mp4-bytes")
+        bundle = ArtifactBundle(
+            gltf=_artifact_ref(ArtifactKind.GLTF),
+            video=ArtifactRef(
+                kind=ArtifactKind.VIDEO,
+                uri=str(video_path),
+                media_type="video/mp4",
+                size_bytes=14,
+                sha256=FAKE_SHA256,
+            ),
+            thumbnail=_artifact_ref(ArtifactKind.THUMBNAIL),
+        )
+        queue = FakeJobQueue()
+        queue.jobs["job-1"] = _succeeded(bundle)
+
+        response = build_client(queue).get("/jobs/job-1/artifacts/video")
+
+        assert response.status_code == 200
+        assert response.content == b"fake-mp4-bytes"
+        assert response.headers["content-type"] == "video/mp4"
+
+    def test_downloads_a_still_by_index(self, tmp_path):
+        still_path = tmp_path / "still_0.png"
+        still_path.write_bytes(b"fake-png-bytes")
+        bundle = ArtifactBundle(
+            gltf=_artifact_ref(ArtifactKind.GLTF),
+            video=_artifact_ref(ArtifactKind.VIDEO),
+            thumbnail=_artifact_ref(ArtifactKind.THUMBNAIL),
+            stills=(
+                ArtifactRef(
+                    kind=ArtifactKind.STILL,
+                    uri=str(still_path),
+                    media_type="image/png",
+                    size_bytes=14,
+                    sha256=FAKE_SHA256,
+                ),
+            ),
+        )
+        queue = FakeJobQueue()
+        queue.jobs["job-1"] = _succeeded(bundle)
+
+        response = build_client(queue).get("/jobs/job-1/artifacts/stills/0")
+
+        assert response.status_code == 200
+        assert response.content == b"fake-png-bytes"
+
+    def test_returns_404_for_an_out_of_range_still_index(self):
+        queue = FakeJobQueue()
+        queue.jobs["job-1"] = _succeeded(_bundle())
+
+        response = build_client(queue).get("/jobs/job-1/artifacts/stills/0")
+
+        assert response.status_code == 404
+
+    def test_returns_404_when_the_job_has_not_succeeded(self):
+        queue = FakeJobQueue()
+        queue.jobs["job-1"] = QueuedJobInfo(
+            status=QueuedJobStatus.RUNNING,
+            spec=make_spec(),
+            created_at=datetime(2026, 1, 1, tzinfo=UTC),
+            finished_at=None,
+            error=None,
+            result=None,
+        )
+
+        response = build_client(queue).get("/jobs/job-1/artifacts/gltf")
+
+        assert response.status_code == 404
+
+    def test_returns_404_for_an_unknown_job(self):
+        response = build_client(FakeJobQueue()).get("/jobs/does-not-exist/artifacts/gltf")
+        assert response.status_code == 404
+
+    def test_returns_404_when_the_file_is_missing_from_disk(self):
+        # _bundle()'s uri ("/out/gltf") was never actually written anywhere.
+        queue = FakeJobQueue()
+        queue.jobs["job-1"] = _succeeded(_bundle())
+
+        response = build_client(queue).get("/jobs/job-1/artifacts/gltf")
+
+        assert response.status_code == 404
