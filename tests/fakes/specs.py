@@ -9,12 +9,15 @@ from makeover_contracts.scene import (
     LightingSpec,
     MaterialAssignment,
     MaterialSlot,
+    RenderSpec,
     SceneSpec,
     SignageSpec,
     StorefrontDimensions,
 )
 
 DIMENSIONS = StorefrontDimensions(width_m=6.0, height_m=3.2, depth_m=4.0)
+DEFAULT_CAMERA = CameraSpec(move=CameraMove.ORBIT)
+DEFAULT_RENDER = RenderSpec()
 
 UNIT_STOREFRONT_MATERIALS = (
     MaterialAssignment(slot=MaterialSlot.FACADE, family="render", base_color="#E8DCC4"),
@@ -32,6 +35,8 @@ def make_spec(
     materials: tuple[MaterialAssignment, ...] = UNIT_STOREFRONT_MATERIALS,
     signage_text: str = "Kedai Kopi Ali",
     seed: int = 7,
+    camera: CameraSpec = DEFAULT_CAMERA,
+    render: RenderSpec = DEFAULT_RENDER,
 ) -> SceneSpec:
     return SceneSpec(
         template_id=template_id,
@@ -41,5 +46,6 @@ def make_spec(
         materials=materials,
         signage=SignageSpec(text=signage_text, emissive_strength=2.0),
         lighting=LightingSpec(preset=LightingPreset.WARM_EVENING),
-        camera=CameraSpec(move=CameraMove.ORBIT),
+        camera=camera,
+        render=render,
     )

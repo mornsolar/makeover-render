@@ -11,6 +11,7 @@ dependencies = [
     "uvicorn[standard]>=0.32",
     "pydantic>=2.9,<3",
     "pydantic-settings>=2.6",
+    "arq>=0.28.0",
 ]
 
 [dependency-groups]
@@ -64,7 +65,10 @@ exclude = "src/makeover_render/infrastructure/blender/scripts/"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
-markers = ["blender: requires a real Blender executable (slow)"]
+markers = [
+    "blender: requires a real Blender executable (slow)",
+    "redis: requires a real redis-server executable",
+]
 addopts = "--cov=src/makeover_render --cov-report=term-missing --cov-fail-under=80"
 
 [tool.coverage.run]

@@ -25,17 +25,23 @@ class BuildScene:
         self._builder = builder
 
     def execute(self, spec: SceneSpec, out_dir: Path) -> BuildArtifact:
-        geometry = geometry_for(spec.template_id)
-        # ``spec.materials[*].slot`` is the contracts enum; the domain registry
-        # only knows plain strings (see template_geometry's module docstring),
-        # so the comparison happens on the wire value both sides agree on.
-        assigned_slots = {assignment.slot.value for assignment in spec.materials}
-        missing = geometry.required_slots - assigned_slots
-        if missing:
-            names = ", ".join(sorted(missing))
-            # Launching Blender for a spec that is already known to be
-            # incomplete would waste a multi-second subprocess just to fail
-            # with a less specific error inside it.
-            raise BuildFailedError(f"template {spec.template_id!r} requires materials for: {names}")
+        check_buildable(spec)
         out_dir.mkdir(parents=True, exist_ok=True)
         return self._builder.build(spec, out_dir)
+
+
+def check_buildable(spec: SceneSpec) -> None:
+    """Raise if this registry cannot build ``spec``, without launching Blender.
+
+    Shared with the job API's enqueue endpoint, so a spec doomed to fail gets
+    a 400 immediately rather than occupying a worker slot first.
+    """
+    geometry = geometry_for(spec.template_id)
+    # ``spec.materials[*].slot`` is the contracts enum; the domain registry
+    # only knows plain strings (see template_geometry's module docstring),
+    # so the comparison happens on the wire value both sides agree on.
+    assigned_slots = {assignment.slot.value for assignment in spec.materials}
+    missing = geometry.required_slots - assigned_slots
+    if missing:
+        names = ", ".join(sorted(missing))
+        raise BuildFailedError(f"template {spec.template_id!r} requires materials for: {names}")

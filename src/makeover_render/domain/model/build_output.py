@@ -11,3 +11,4 @@ from __future__ import annotations
 from typing import Final
 
 GLB_FILENAME: Final = "scene.glb"
+FRAME_FILENAME_PATTERN: Final = "frame_%04d.png"
